@@ -1,126 +1,136 @@
-from pptx import Presentation
-from pptx.util import Inches, Pt
-from pptx.dml.color import RGBColor
+import streamlit as st
+from datetime import date
+import yfinance as yf
+from prophet import Prophet
+from prophet.plot import plot_plotly
+from plotly import graph_objs as go
 
-# Create a presentation object
-ppt = Presentation()
+# Customizing the layout
+st.set_page_config(page_title="Stock Sense", page_icon="📈", layout="wide")
 
-# Slide 1: Title Slide
-slide_1 = ppt.slides.add_slide(ppt.slide_layouts[0])
-title = slide_1.shapes.title
-subtitle = slide_1.placeholders[1]
-title.text = "Stock Sense: A Machine Learning Stock Prediction Platform"
-subtitle.text = "For IBM Internship\nMohammed Baasil Muneer\nOctober 2024"
+# Background color for the whole page
+st.markdown(
+    """
+    <style>
+    .reportview-container {
+        background-color: #F0F0F5;
+    }
+    .css-1d391kg {
+        background-color: #0066CC;
+        color: white;
+    }
+    .main {
+        background-color: #F0F0F5;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
-# Set title color
-title_format = title.text_frame.paragraphs[0].font
-title_format.size = Pt(44)
-title_format.bold = True
-title_format.color.rgb = RGBColor(0, 102, 204)  # Blue color for the title
+# Sidebar logo for Yenepoya Institute in the upper left corner
+st.sidebar.image(r"C:\Users\baasi\Downloads\yenepoyalogo.jpg", width=150, caption="Yenepoya Institute", use_column_width=False)
 
-# Add image in the title slide (e.g., stock market chart or related image)
-img_path = "stock_market_chart.jpg"  # Path to your image
-slide_1.shapes.add_picture(img_path, Inches(0.5), Inches(1.5), width=Inches(8))
+# Team Name and Project Title in the main content
+st.markdown("<h1 style='text-align: center;'>Stock Sense</h1>", unsafe_allow_html=True)
+st.markdown("<h3 style='text-align: center;'>IBM Internship Project</h3>", unsafe_allow_html=True)
 
-# Slide 2: Introduction with Colors and Bullets
-slide_2 = ppt.slides.add_slide(ppt.slide_layouts[1])
-title_2 = slide_2.shapes.title
-title_2.text = "Introduction"
+START = "2015-01-01"
+TODAY = date.today().strftime("%Y-%m-%d")
 
-content_2 = slide_2.shapes.placeholders[1].text_frame
-content_2.text = "Project Overview:"
-content_2.paragraphs[0].font.size = Pt(28)
-content_2.paragraphs[0].font.bold = True
-content_2.paragraphs[0].font.color.rgb = RGBColor(0, 51, 102)  # Dark blue
+# Dictionary of popular stocks and their full names
+stocks_dict = {
+    "AAPL": "Apple Inc.",
+    "GOOG": "Alphabet Inc. (Google)",
+    "MSFT": "Microsoft Corporation",
+    "AMZN": "Amazon.com Inc.",
+    "TSLA": "Tesla Inc.",
+    "META": "Meta Platforms Inc. (Facebook)",
+    "NFLX": "Netflix Inc.",
+    "NVDA": "Nvidia Corporation",
+    "BABA": "Alibaba Group",
+    "GME": "GameStop Corp.",
+    "JNJ": "Johnson & Johnson",
+    "WMT": "Walmart Inc.",
+    "PG": "Procter & Gamble Co.",
+    "V": "Visa Inc.",
+    "JPM": "JPMorgan Chase & Co.",
+    "DIS": "The Walt Disney Company",
+    "AMD": "Advanced Micro Devices Inc.",
+    "BA": "The Boeing Company",
+    "KO": "The Coca-Cola Company",
+    "PEP": "PepsiCo Inc."
+}
 
-p = content_2.add_paragraph()
-p.text = "• A platform using machine learning to predict stock market trends."
-p.font.size = Pt(24)
-p.font.color.rgb = RGBColor(0, 153, 51)  # Green text for emphasis
+# Create a list of formatted strings for the multiselect
+stocks = [f"{symbol} - {name}" for symbol, name in stocks_dict.items()]
 
-p = content_2.add_paragraph()
-p.text = "• Provides stock analysis, data visualization, and insights."
-p.font.size = Pt(24)
-p.font.color.rgb = RGBColor(255, 102, 0)  # Orange for a different emphasis
+# Allow the user to select predefined stock symbols
+selected_stocks = st.multiselect("Select stock symbols for prediction:", stocks, default=["AAPL - Apple Inc."])
 
-# Slide 3: Problem Statement with Image and Colors
-slide_3 = ppt.slides.add_slide(ppt.slide_layouts[1])
-title_3 = slide_3.shapes.title
-title_3.text = "Problem Statement"
+# Allow the user to enter custom stock symbols
+custom_stocks_input = st.text_input("Or, enter custom stock symbols (comma separated):", "")
 
-content_3 = slide_3.shapes.placeholders[1].text_frame
-content_3.text = "Key Issues:"
-content_3.paragraphs[0].font.size = Pt(28)
-content_3.paragraphs[0].font.bold = True
-content_3.paragraphs[0].font.color.rgb = RGBColor(153, 0, 0)  # Red for problems
+# Combine predefined and custom stocks into a final list
+if custom_stocks_input:
+    custom_stocks = [symbol.strip().upper() for symbol in custom_stocks_input.split(",")]
+    # Add the custom stocks to the selected stocks
+    final_stocks = [stock.split(" - ")[0] for stock in selected_stocks] + custom_stocks
+else:
+    # Only use the predefined stocks if no custom input is provided
+    final_stocks = [stock.split(" - ")[0] for stock in selected_stocks]
 
-p = content_3.add_paragraph()
-p.text = "• Uncertainty in stock market trends."
-p.font.size = Pt(24)
-p.font.color.rgb = RGBColor(204, 0, 0)  # Dark red
+# Remove duplicates (if the same stock is selected both in predefined and custom inputs)
+final_stocks = list(set(final_stocks))
 
-p = content_3.add_paragraph()
-p.text = "• Difficulty in analyzing large amounts of stock data."
-p.font.size = Pt(24)
-p.font.color.rgb = RGBColor(204, 0, 0)
+# Proceed with the first stock for prediction (you can extend this to multiple stocks later)
+if final_stocks:
+    stock_to_predict = final_stocks[0]  # Taking the first stock for now
+else:
+    st.warning("Please select or enter at least one stock symbol.")
+    st.stop()
 
-# Add an image related to stock issues
-img_path_problem = "confused_trader.jpg"  # Path to your image
-slide_3.shapes.add_picture(img_path_problem, Inches(5.5), Inches(1.5), width=Inches(3))
+n_year = st.slider("YEARS OF PREDICTION:", 1, 5)
+period = n_year * 365
 
-# Slide 4: Objectives with Colorful Layout
-slide_4 = ppt.slides.add_slide(ppt.slide_layouts[1])
-title_4 = slide_4.shapes.title
-title_4.text = "Objectives"
+@st.cache_data
+def load_data(ticker):
+    data = yf.download(ticker, START, TODAY)
+    data.reset_index(inplace=True)
+    return data
 
-content_4 = slide_4.shapes.placeholders[1].text_frame
-content_4.text = "Main Goals:"
-content_4.paragraphs[0].font.size = Pt(28)
-content_4.paragraphs[0].font.bold = True
-content_4.paragraphs[0].font.color.rgb = RGBColor(0, 102, 204)  # Blue
+data_load_state = st.text("Loading data...")
+data = load_data(stock_to_predict)
+data_load_state.text("Loading data...done!")
 
-p = content_4.add_paragraph()
-p.text = "• Predict stock prices using machine learning."
-p.font.size = Pt(24)
-p.font.color.rgb = RGBColor(0, 204, 102)  # Green
+# Plot the raw data
+st.subheader('Raw data')
+st.write(data.tail())
 
-p = content_4.add_paragraph()
-p.text = "• Provide user-friendly access to stock data."
-p.font.size = Pt(24)
-p.font.color.rgb = RGBColor(0, 204, 102)
+def plot_raw_data():
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=data['Date'], y=data['Close'], name="Stock Close Price"))
+    fig.layout.update(title_text='Time Series Data', xaxis_rangeslider_visible=True)
+    st.plotly_chart(fig)
 
-p = content_4.add_paragraph()
-p.text = "• Visualize stock market trends."
-p.font.size = Pt(24)
-p.font.color.rgb = RGBColor(0, 204, 102)
+plot_raw_data()
 
-# Slide 5: Technology Stack with Icons
-slide_5 = ppt.slides.add_slide(ppt.slide_layouts[1])
-title_5 = slide_5.shapes.title
-title_5.text = "Technology Stack"
+# Forecasting
+df_train = data[['Date', 'Close']]
+df_train = df_train.rename(columns={"Date": "ds", "Close": "y"})
 
-content_5 = slide_5.shapes.placeholders[1].text_frame
-content_5.text = "Frontend: HTML5, CSS3, JavaScript"
-content_5.paragraphs[0].font.size = Pt(24)
-p = content_5.add_paragraph()
-p.text = "Backend: Flask"
-p.font.size = Pt(24)
-p = content_5.add_paragraph()
-p.text = "Database: MySQL/SQLite"
-p.font.size = Pt(24)
-p = content_5.add_paragraph()
-p.text = "Data Processing: yfinance API, Scikit-learn"
-p.font.size = Pt(24)
-p = content_5.add_paragraph()
-p.text = "Visualization: Matplotlib, Seaborn"
-p.font.size = Pt(24)
-p = content_5.add_paragraph()
-p.text = "Tools: Streamlit"
-p.font.size = Pt(24)
+m = Prophet()
+m.fit(df_train)
 
-# Add icons to represent each tech stack element (optional)
-icon_path = "stack_icon.png"  # Path to a representative tech icon
-slide_5.shapes.add_picture(icon_path, Inches(6), Inches(1), width=Inches(1.5))
+future = m.make_future_dataframe(periods=period)
+forecast = m.predict(future)
 
-# Save the presentation
-ppt.save("Stock_Sense_IBM_Presentation.pptx")
+st.subheader('Forecast data')
+st.write(forecast.tail())
+
+st.write('Forecast plot')
+fig1 = plot_plotly(m, forecast)
+st.plotly_chart(fig1)
+
+st.write("Forecast components")
+fig2 = m.plot_components(forecast)
+st.write(fig2)
