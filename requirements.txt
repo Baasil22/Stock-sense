@@ -1,9 +1,5 @@
-yfinance
 streamlit
-python-pptx
 yfinance
-matplotlib
-seaborn
-scikit-learn
 prophet
 plotly
+pandas
