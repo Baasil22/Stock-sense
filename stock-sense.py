@@ -28,7 +28,12 @@ st.markdown(
 )
 
 # Sidebar logo for Yenepoya Institute in the upper left corner
-st.sidebar.image(r"C:\Users\baasi\Downloads\yenepoyalogo.jpg", width=150, caption="Yenepoya Institute", use_column_width=False)
+logo_image = st.sidebar.file_uploader("Upload Yenepoya Institute logo", type=["jpg", "png"])
+
+if logo_image:
+    st.sidebar.image(logo_image, width=150, caption="Yenepoya Institute", use_column_width=False)
+else:
+    st.warning("Please upload the Yenepoya Institute logo.")
 
 # Team Name and Project Title in the main content
 st.markdown("<h1 style='text-align: center;'>Stock Sense</h1>", unsafe_allow_html=True)
