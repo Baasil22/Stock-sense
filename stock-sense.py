@@ -120,8 +120,14 @@ def plot_raw_data():
 plot_raw_data()
 
 # Forecasting
-df_train = data[['Date', 'Close']]
+df_train = data[['Date', 'Close']].copy()
+
+# Ensure 'Close' column is numeric, dropping or filling NaN values
+df_train['Close'] = pd.to_numeric(df_train['Close'], errors='coerce')
+df_train = df_train.dropna(subset=['Close'])  # Remove rows where 'Close' is NaN
+
 df_train = df_train.rename(columns={"Date": "ds", "Close": "y"})
+
 
 m = Prophet()
 m.fit(df_train)
