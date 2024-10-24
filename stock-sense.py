@@ -4,6 +4,7 @@ import yfinance as yf
 from prophet import Prophet
 from prophet.plot import plot_plotly
 from plotly import graph_objs as go
+import pandas as pd  # Ensure you import pandas
 
 # Customizing the layout
 st.set_page_config(page_title="Stock Sense", page_icon="📈", layout="wide")
@@ -127,7 +128,6 @@ df_train['Close'] = pd.to_numeric(df_train['Close'], errors='coerce')
 df_train = df_train.dropna(subset=['Close'])  # Remove rows where 'Close' is NaN
 
 df_train = df_train.rename(columns={"Date": "ds", "Close": "y"})
-
 
 m = Prophet()
 m.fit(df_train)
